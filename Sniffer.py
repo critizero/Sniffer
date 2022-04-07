@@ -2,6 +2,7 @@
 from scapy.arch.windows import *
 import threading
 import os
+import time
 from scapy.all import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
@@ -21,6 +22,7 @@ class Sniffer(QMainWindow):
         self.packet_list = []
         self.process_interface = ''
         self.pkt_idx = 0
+        self.start_time = 0
 
         self.initUI()
         self.toGetInterface()
@@ -84,9 +86,24 @@ class Sniffer(QMainWindow):
         vbox.addLayout(filter_box)
 
         # Packages
-        self.package_lw = QListWidget()
-        self.package_lw.itemClicked.connect(self.showDetails)
-        self.package_lw.itemDoubleClicked.connect(self.showDoubleDetails)
+        # self.package_lw = QListWidget()
+        # self.package_lw.itemClicked.connect(self.showDetails)
+        # self.package_lw.itemDoubleClicked.connect(self.showDoubleDetails)
+        self.package_tb = QTableWidget()
+        self.package_tb.setFrameShape(QFrame.NoFrame)
+        self.package_tb.setColumnCount(7)
+        self.package_tb.setHorizontalHeaderLabels(['Index', 'Time', 'Source', 'Destination', 'Protocol', 'Length',
+                                                   'Information'])
+        self.package_tb.horizontalHeader().setFixedHeight(50)
+        self.package_tb.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.package_tb.horizontalHeader().setStretchLastSection(True)
+        self.package_tb.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.package_tb.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.package_tb.horizontalHeader().setSectionsClickable(False)
+        self.package_tb.verticalHeader().setVisible(False)
+        self.package_tb.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.package_tb.clicked.connect(self.showDetails)
+        self.package_tb.doubleClicked.connect(self.showDoubleDetails)
         # Details
         self.details_tw = QTreeWidget()
         self.details_tw.setColumnCount(2)
@@ -95,7 +112,7 @@ class Sniffer(QMainWindow):
         self.binary_te = QTextEdit()
 
         main_splitter = QSplitter(Qt.Vertical)
-        main_splitter.addWidget(self.package_lw)
+        main_splitter.addWidget(self.package_tb)
         main_splitter.addWidget(self.details_tw)
         main_splitter.addWidget(self.binary_te)
         vbox.addWidget(main_splitter)
@@ -105,7 +122,7 @@ class Sniffer(QMainWindow):
         self.setCentralWidget(global_widget)
 
         self.setWindowTitle('Sniffer')
-        self.resize(1200, 800)
+        self.resize(2000, 1600)
         self.windowCenter()
         self.setWindowIcon(QIcon('icons/web.png'))
         self.show()
@@ -139,11 +156,13 @@ class Sniffer(QMainWindow):
     def toStart(self):
         print('Start')
         do_capture = threading.Thread(target=self.doStart, daemon=True)
+        self.start_time = time.time()
         do_capture.start()
 
     def doStart(self):
         self.dataInitial()
-        self.package_lw.clear()
+        for r in range(self.package_tb.rowCount()):
+            self.package_tb.removeRow(r)
         filter_message = self.filter_le.text()
         try:
             sniff(iface=self.process_interface, filter=filter_message, prn=self.processPackage, stop_filter=self.isStop)
@@ -153,39 +172,52 @@ class Sniffer(QMainWindow):
             print('finish')
 
     def processPackage(self, x):
+        row = self.package_tb.rowCount()
+        self.package_tb.insertRow(row)
         self.packet_list.append(x)
         pkt_idx = self.pkt_idx
         self.pkt_idx += 1
-        pkt_src = x[Ether].src
-        pkt_dst = x[Ether].dst
-        pkt_type = x[Ether].type
-        pkt_protocol = 'LOOP'
-        if pkt_type in self.pkt_types_dir:
-            pkt_protocol = self.pkt_types_dir[pkt_type]
-        if pkt_protocol == 'IPv4':
-            pkt_src = x[IP].src
-            pkt_dst = x[IP].dst
-            pkt_type = x[IP].proto
-            if pkt_type in self.ipv4_protocol:
-                pkt_protocol = self.ipv4_protocol[pkt_type]
-        if TCP in x:
-            sport = x[TCP].sport
-            dport = x[TCP].dport
-            if sport in self.tcp_port:
-                pkt_protocol = self.tcp_port[sport]
-            if dport in self.tcp_port:
-                pkt_protocol = self.tcp_port[dport]
-        if UDP in x:
-            sport = x[UDP].sport
-            dport = x[UDP].dport
-            if sport in self.udp_port:
-                pkt_protocol = self.tcp_port[sport]
-            if dport in self.udp_port:
-                pkt_protocol = self.tcp_port[dport]
-        pkt_info = x.summary()
-        pkt_detail = "{0:0>5} | {1:<20} -> {2:<20} | {3:<10} | {4:<30}".format(pkt_idx, pkt_src, pkt_dst, pkt_protocol,
-                                                                               pkt_info)
-        self.package_lw.addItem(pkt_detail)
+        try:
+            pkt_time = x.time - self.start_time
+            pkt_src = x[Ether].src
+            pkt_dst = x[Ether].dst
+            pkt_type = x[Ether].type
+            pkt_protocol = 'LOOP'
+            if pkt_type in self.pkt_types_dir:
+                pkt_protocol = self.pkt_types_dir[pkt_type]
+            if pkt_protocol == 'IPv4':
+                pkt_src = x[IP].src
+                pkt_dst = x[IP].dst
+                pkt_type = x[IP].proto
+                if pkt_type in self.ipv4_protocol:
+                    pkt_protocol = self.ipv4_protocol[pkt_type]
+            if TCP in x:
+                sport = x[TCP].sport
+                dport = x[TCP].dport
+                if sport in self.tcp_port:
+                    pkt_protocol = self.tcp_port[sport]
+                if dport in self.tcp_port:
+                    pkt_protocol = self.tcp_port[dport]
+            if UDP in x:
+                sport = x[UDP].sport
+                dport = x[UDP].dport
+                if sport in self.udp_port:
+                    pkt_protocol = self.tcp_port[sport]
+                if dport in self.udp_port:
+                    pkt_protocol = self.tcp_port[dport]
+            pkt_info = x.summary()
+
+            self.package_tb.setItem(row, 0, QTableWidgetItem(str(pkt_idx)))
+            self.package_tb.setItem(row, 1, QTableWidgetItem('{0:.6f}'.format(pkt_time)))
+            self.package_tb.setItem(row, 2, QTableWidgetItem(pkt_src))
+            self.package_tb.setItem(row, 3, QTableWidgetItem(pkt_dst))
+            self.package_tb.setItem(row, 4, QTableWidgetItem(pkt_protocol))
+            self.package_tb.setItem(row, 5, QTableWidgetItem(str(len(x))))
+            self.package_tb.setItem(row, 6, QTableWidgetItem(pkt_info))
+        except Exception as err:
+            print(err)
+            self.pkt_idx -= 1
+            self.package_tb.removeRow(row)
 
     def toStop(self):
         print('Stop')
@@ -197,7 +229,8 @@ class Sniffer(QMainWindow):
     def showDoubleDetails(self, item):
         print('double click show')
         self.showDetails(item)
-        idx = int(item.text().split('|')[0])
+        row = item.row()
+        idx = int(self.package_tb.item(row, 0).text())
         pkt = self.packet_list[idx]
         raw_details = pkt.show(dump=True)
         QMessageBox.information(self, 'Details', raw_details, QMessageBox.Yes)
@@ -207,13 +240,34 @@ class Sniffer(QMainWindow):
         self.binary_te.clear()
         self.details_tw.clear()
         try:
-            idx = int(item.text().split('|')[0])
+            row = item.row()
+            idx = int(self.package_tb.item(row, 0).text())
             pkt = self.packet_list[idx]
             # hexdump(pkt)
-            self.fillTreeDetails(pkt)
+            # self.fillTreeDetails(pkt)
+            self.dynamicTreeDetails(pkt)
             self.binary_te.setPlainText(hexdump(pkt, dump=True))
         except Exception as err:
             print(err)
+
+    def dynamicTreeDetails(self, pkt):
+        print('dynamic')
+        raw_str = pkt.show(dump=True)
+        chunks = raw_str.split('###')[1:]
+        chunk_count = len(chunks) // 2
+        for idx in range(chunk_count):
+            header = chunks[idx * 2].strip()
+            root = QTreeWidgetItem(self.details_tw)
+            root.setText(0, header)
+            keys = chunks[idx * 2 + 1].split('\n')[1:-1]
+            for key in keys:
+                if '=' in key:
+                    name, value = key.split(' = ', 1)
+                else:
+                    name, value = list(filter(None, key.split(' ')))
+                child = QTreeWidgetItem(root)
+                child.setText(0, name.strip())
+                child.setText(1, value.strip())
 
     def fillTreeDetails(self, pkt):
         print('tree')
