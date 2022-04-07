@@ -32,6 +32,8 @@ class Sniffer(QMainWindow):
         self.packet_list = []
         self.process_interface = ''
         self.pkt_idx = 0
+        while self.package_tb.rowCount() != 0:
+            self.package_tb.removeRow(0)
 
     def initUI(self):
         hbox = QHBoxLayout()
@@ -122,7 +124,7 @@ class Sniffer(QMainWindow):
         self.setCentralWidget(global_widget)
 
         self.setWindowTitle('Sniffer')
-        self.resize(2000, 1600)
+        self.resize(1600, 800)
         self.windowCenter()
         self.setWindowIcon(QIcon('icons/web.png'))
         self.show()
@@ -155,14 +157,12 @@ class Sniffer(QMainWindow):
 
     def toStart(self):
         print('Start')
+        self.dataInitial()
         do_capture = threading.Thread(target=self.doStart, daemon=True)
         self.start_time = time.time()
         do_capture.start()
 
     def doStart(self):
-        self.dataInitial()
-        for r in range(self.package_tb.rowCount()):
-            self.package_tb.removeRow(r)
         filter_message = self.filter_le.text()
         try:
             sniff(iface=self.process_interface, filter=filter_message, prn=self.processPackage, stop_filter=self.isStop)
