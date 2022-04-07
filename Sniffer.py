@@ -202,9 +202,9 @@ class Sniffer(QMainWindow):
                 sport = x[UDP].sport
                 dport = x[UDP].dport
                 if sport in self.udp_port:
-                    pkt_protocol = self.tcp_port[sport]
+                    pkt_protocol = self.udp_port[sport]
                 if dport in self.udp_port:
-                    pkt_protocol = self.tcp_port[dport]
+                    pkt_protocol = self.udp_port[dport]
             pkt_info = x.summary()
 
             self.package_tb.setItem(row, 0, QTableWidgetItem(str(pkt_idx)))
