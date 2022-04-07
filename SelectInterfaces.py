@@ -24,7 +24,7 @@ class SelectInterfaces(QDialog):
         interfaces_box.addWidget(interfaces_lab)
         for idx, intf in enumerate(self.interfaces):
             new_net = QRadioButton(intf['name'])
-            button_tip = 'Name: %s\nIPv4: %s\nDescription: %s' % (intf['name'], intf['ip'], intf['desc'])
+            button_tip = 'Name: %s\nIP: %s\nDescription: %s' % (intf['name'], intf['ip'], intf['desc'])
             new_net.setToolTip(button_tip)
             new_net.clicked.connect(lambda: self.net_button_clicked(self.sender()))
             if idx == 0:
