@@ -36,7 +36,7 @@ class SelectInterfaces(QDialog):
         # Message Frame
         message_box = QVBoxLayout()
         message_box.addStretch(1)
-        author_label = QLabel('作者：陈晴方\n学号：202118018670053\n培养单位：信息工程研究所')
+        author_label = QLabel('作者：\n学号：\n培养单位：')
         message_box.addWidget(author_label)
         self.message_le = QLineEdit(self)
         self.message_le.setText(self.interfaces[0]['name'])
